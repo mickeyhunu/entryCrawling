@@ -15,18 +15,13 @@ Playwright(헤드리스 Chromium)로 페이지를 열어 버튼을 누른 뒤 Be
 4. 가게는 `entry_crawler.py`의 `STORE_NO`에서 storeNo(100~120)로 바꿉니다.
    목록에 없는 가게는 경고를 출력하고 건너뜁니다.
 
-| storeNo | 가게 | slug | storeNo | 가게 | slug |
-|---|---|---|---|---|---|
-| 100 | 앨리스 | alice | 108 | 베이직 | basic |
-| 101 | 퀄리티 | quality | 109 | 임팩트 | impact |
-| 102 | 켈리 | kelly | 110 | 피카소 | picasso |
-| 103 | 디즈니 | disney | 111 | 원픽 | onepick |
-| 104 | 2.4 | 2_4 | 112 | 블렌딩 | blending |
-| 105 | 청담동 | cheongdamdong | 113 | 스피드 | speed |
-| 106 | 레이디 | lady | 114 | 타이밍 | timing |
-| 107 | 어나더 | another | 115 | 파티원 | partyone |
-
-116~120은 새 가게용으로 비워두었습니다.
+| storeNo | 가게 | slug |
+|---|---|---|
+| 103 | 블렌딩 | blending |
+| 106 | 어나더 | another |
+| 107 | 타이밍 | timing |
+| 109 | 임팩트 | impact |
+| 110 | 피카소 | picasso |
 
 ## 출력
 
@@ -73,8 +68,15 @@ ON DUPLICATE KEY UPDATE lastAttendanceAt = CURRENT_TIMESTAMP;
 
 ### 설정
 
-`.env.example`을 `.env`로 복사하고 `CHATBOT_MYSQL_USER`, `CHATBOT_MYSQL_PASSWORD`를 채웁니다.
-`.env`는 `.gitignore`에 들어 있어 커밋되지 않습니다.
+프로젝트 폴더에 `.env` 파일을 만들고 접속 정보를 적습니다. `.env`는 `.gitignore`에 들어 있어 커밋되지 않습니다.
+
+```
+CHATBOT_MYSQL_HOST=...
+CHATBOT_MYSQL_PORT=3306
+CHATBOT_MYSQL_USER=...
+CHATBOT_MYSQL_PASSWORD=...
+CHATBOT_MYSQL_DATABASE=chatBot_DB
+```
 
 ### 실행
 

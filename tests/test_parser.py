@@ -1,9 +1,18 @@
 import unittest
+from unittest import mock
 from pathlib import Path
 
+import entry_crawler
 from entry_crawler import parse_age_hours, parse_feed_html, parse_members, todays_entries
+from tests import TEST_STORE_NO
 
 FIXTURE = Path(__file__).parent / "fixtures" / "feed_sample.html"
+
+
+def setUpModule():
+    patcher = mock.patch.dict(entry_crawler.STORE_NO, TEST_STORE_NO, clear=True)
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
 
 
 class TodaysEntriesTest(unittest.TestCase):

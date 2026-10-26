@@ -1,9 +1,12 @@
 import tempfile
 import unittest
+from unittest import mock
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import entry_crawler
 from entry_watcher import load_state, run_once, save_state
+from tests import TEST_STORE_NO
 
 FIXTURE = Path(__file__).parent / "fixtures" / "feed_sample.html"
 HTML = FIXTURE.read_text(encoding="utf-8")
@@ -13,6 +16,12 @@ NEW_POST = HTML.replace(
     .replace("14시간 전", "방금 전").replace("앨리스 24명", "앨리스 3명\n새로 이름") + "</article>",
     1,
 )
+
+
+def setUpModule():
+    patcher = mock.patch.dict(entry_crawler.STORE_NO, TEST_STORE_NO, clear=True)
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
 
 
 class RunOnceTest(unittest.TestCase):
