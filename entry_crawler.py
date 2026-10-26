@@ -12,13 +12,13 @@ HTML 을 확보한 뒤 BeautifulSoup 으로 <article> 카드를 파싱한다.
     python entry_crawler.py -o entries.json
     python entry_crawler.py --format csv -o entries.csv
     python entry_crawler.py --html saved.html     # 저장된 HTML 파일 파싱 (오프라인)
-    python entry_crawler.py --db                  # 크롤링 결과를 MySQL 에 저장
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import re
 import sys
@@ -69,7 +69,17 @@ class EntryPost:
     shop_slug: str
     time_text: str
     tag: str
+    content: str = ""
     members: list[str] = field(default_factory=list)
+
+    @property
+    def key(self) -> str:
+        """게시글 식별자. 피드에 글 ID 가 없어서 가게 + 본문으로 만든다."""
+        return hashlib.sha1(f"{self.shop_slug}\n{self.content}".encode()).hexdigest()
+
+    @property
+    def is_entry(self) -> bool:
+        return self.tag == ENTRY_TAG
 
 
 def parse_age_hours(time_text: str) -> float | None:
@@ -115,13 +125,15 @@ def parse_article(article: Tag) -> EntryPost | None:
     content_p = body.find("p", class_="whitespace-pre-wrap")
     tag_span = body.find("span", class_="rounded-full", attrs={"role": None})
     time_el = body.find("time")
+    content = content_p.get_text().strip() if content_p else ""
 
     return EntryPost(
         shop_name=shop_link.get_text(strip=True).lstrip("@") if shop_link else "",
         shop_slug=shop_link["href"].rsplit("/", 1)[-1] if shop_link else "",
         time_text=time_el.get_text(strip=True) if time_el else "",
         tag=tag_span.get_text(strip=True) if tag_span else "",
-        members=parse_members(content_p.get_text() if content_p else ""),
+        content=content,
+        members=parse_members(content),
     )
 
 
@@ -137,21 +149,29 @@ def todays_entries(
     rows: list[dict] = []
     done: set[str] = set()
     for post in posts:  # 피드는 최신순이므로 가게별 첫 글이 최신 글
-        if post.tag != ENTRY_TAG or not is_recent(post.time_text, max_hours):
+        if not post.is_entry or not is_recent(post.time_text, max_hours):
             continue
         if post.shop_slug in done:
             continue
-        store_no = STORE_NO.get(post.shop_slug)
-        if store_no is None:
-            print(
-                f"[warn] storeNo 미지정 가게 건너뜀: {post.shop_name} ({post.shop_slug})"
-                " -> STORE_NO 에 추가하세요",
-                file=sys.stderr,
-            )
+        post_rows = rows_for_post(post)
+        if post_rows is None:
             continue
         done.add(post.shop_slug)
-        rows.extend({"storeNo": store_no, "workerName": name} for name in post.members)
+        rows.extend(post_rows)
     return rows
+
+
+def rows_for_post(post: EntryPost) -> list[dict] | None:
+    """게시글 하나의 명단을 {storeNo, workerName} 행으로 만든다. storeNo 미지정 가게는 None."""
+    store_no = STORE_NO.get(post.shop_slug)
+    if store_no is None:
+        print(
+            f"[warn] storeNo 미지정 가게 건너뜀: {post.shop_name} ({post.shop_slug})"
+            " -> STORE_NO 에 추가하세요",
+            file=sys.stderr,
+        )
+        return None
+    return [{"storeNo": store_no, "workerName": name} for name in post.members]
 
 
 def fetch_feed_html(
@@ -216,8 +236,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--format", choices=["json", "csv"], default="json")
     ap.add_argument("-o", "--output", help="출력 파일 (기본: stdout)")
     ap.add_argument("--headful", action="store_true", help="브라우저 창을 띄워서 실행")
-    ap.add_argument("--db", action="store_true",
-                    help="ENTRY_TODAY / ENTRY_ALLDAY 테이블에 저장 (.env 의 CHATBOT_MYSQL_* 사용)")
     args = ap.parse_args(argv)
 
     if args.html:
@@ -227,12 +245,6 @@ def main(argv: list[str] | None = None) -> int:
         html = fetch_feed_html(args.url, max_hours=args.max_hours, headless=not args.headful)
 
     rows = todays_entries(parse_feed_html(html), args.max_hours)
-
-    if args.db:
-        from entry_db import save_entries
-
-        saved = save_entries(rows)
-        print(f"[db] {saved}행 저장 완료", file=sys.stderr)
 
     writer = write_csv if args.format == "csv" else write_json
     if args.output:

@@ -50,9 +50,10 @@ python entry_crawler.py --max-hours 24         # 기준 시간 변경
 python entry_crawler.py --html saved.html      # 저장해 둔 HTML 파일 파싱
 ```
 
-## DB 저장 (MySQL)
+## 새 엔트리 자동 저장 (MySQL)
 
-`--db`를 붙이면 결과를 `ENTRY_TODAY`, `ENTRY_ALLDAY` 테이블에 한 트랜잭션으로 저장합니다.
+`entry_watcher.py`는 피드를 계속 확인하다가 **새 엔트리 글이 올라오면** 그 글의 명단을
+`ENTRY_TODAY`, `ENTRY_ALLDAY` 테이블에 넣습니다.
 
 ```sql
 INSERT INTO ENTRY_TODAY (storeNo, workerName) VALUES (?, ?)
@@ -62,13 +63,24 @@ INSERT INTO ENTRY_ALLDAY (storeNo, workerName, lastAttendanceAt) VALUES (?, ?, C
 ON DUPLICATE KEY UPDATE lastAttendanceAt = CURRENT_TIMESTAMP;
 ```
 
-1. `.env.example`을 `.env`로 복사하고 `CHATBOT_MYSQL_USER`, `CHATBOT_MYSQL_PASSWORD`를 채웁니다.
-   `.env`는 `.gitignore`에 들어 있어 커밋되지 않습니다.
-2. 실행합니다.
+- 20시간 이내 `엔트리` 글 중 처음 보는 글만 넣습니다. 같은 가게가 글을 다시 올리면 그 글도 새 글로 넣습니다.
+- 처리한 글은 `seen_posts.json`에 기록해서, 프로그램을 껐다 켜도 같은 글을 다시 넣지 않습니다
+  (피드에 글 ID가 없어 가게 + 본문 내용으로 같은 글인지 판단합니다).
+- 네트워크나 DB 오류가 나면 로그만 남기고 다음 주기에 다시 시도합니다.
+- `ENTRY_TODAY` 초기화는 DB에서 하루 한 번 처리하는 것을 전제로 합니다.
+
+### 설정
+
+`.env.example`을 `.env`로 복사하고 `CHATBOT_MYSQL_USER`, `CHATBOT_MYSQL_PASSWORD`를 채웁니다.
+`.env`는 `.gitignore`에 들어 있어 커밋되지 않습니다.
+
+### 실행
 
 ```bash
-python entry_crawler.py --db                    # 크롤링 후 DB 저장
-python entry_crawler.py --db -o entries.json    # DB 저장 + 파일로도 저장
+python entry_watcher.py                   # 60초마다 확인, Ctrl+C 로 종료
+python entry_watcher.py --interval 300    # 5분마다 확인
+python entry_watcher.py --once            # 한 번만 확인 (작업 스케줄러에 등록할 때)
+python entry_watcher.py --skip-existing   # 시작 시점에 이미 있는 글은 넣지 않고 그 이후 글만
 ```
 
 ## 테스트
