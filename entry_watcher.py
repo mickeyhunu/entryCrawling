@@ -19,7 +19,8 @@ import argparse
 import json
 import logging
 import os
-import time
+import signal
+import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
@@ -97,6 +98,29 @@ def run_once(
     return saved
 
 
+def install_stop_handlers() -> threading.Event:
+    """Ctrl+C, 콘솔 창 닫기, 서비스 중지 신호를 받으면 stop 이벤트만 켠다.
+
+    크롤링 도중에 예외로 끊으면 Playwright 가 정리되지 않고 멈출 수 있어서,
+    진행 중인 확인은 끝까지 마치고(브라우저·DB 연결 정상 종료) 루프를 빠져나온다.
+    두 번째 신호는 즉시 강제 종료한다.
+    """
+    stop = threading.Event()
+
+    def handler(signum, frame):
+        if stop.is_set():
+            log.warning("강제 종료")
+            os._exit(1)
+        log.info("종료 요청 받음: 진행 중인 확인을 마치고 종료합니다 (한 번 더 누르면 강제 종료)")
+        stop.set()
+
+    # SIGBREAK: Windows 콘솔 창 닫기 / Ctrl+Break
+    for name in ("SIGINT", "SIGTERM", "SIGBREAK"):
+        if hasattr(signal, name):
+            signal.signal(getattr(signal, name), handler)
+    return stop
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="새 엔트리 글을 감시해서 DB 에 저장")
     ap.add_argument("--url", default=FEED_URL, help="피드 URL (기본: %(default)s)")
@@ -116,6 +140,7 @@ def main(argv: list[str] | None = None) -> int:
     from entry_db import load_db_config, save_entries
 
     load_db_config()  # 접속 정보가 없으면 시작할 때 바로 알린다
+    stop = install_stop_handlers()
 
     def fetch() -> str:
         return fetch_feed_html(args.url, max_hours=args.max_hours, headless=not args.headful)
@@ -123,22 +148,17 @@ def main(argv: list[str] | None = None) -> int:
     state = load_state(args.state)
     skip = args.skip_existing
     log.info("감시 시작: %s (%d초 간격)", args.url, args.interval)
-    while True:
+    while not stop.is_set():
         try:
             saved = run_once(fetch, save_entries, state, args.state, args.max_hours, skip)
             skip = False
             log.info("확인 완료: 새로 저장 %d행", saved)
-        except KeyboardInterrupt:
-            break
         except Exception:
             # 네트워크/DB 일시 오류는 기록만 하고 다음 주기에 다시 시도
             log.exception("확인 중 오류")
         if args.once:
             break
-        try:
-            time.sleep(args.interval)
-        except KeyboardInterrupt:
-            break
+        stop.wait(args.interval)  # 대기 중 종료 신호가 오면 바로 깨어난다
     log.info("감시 종료")
     return 0
 

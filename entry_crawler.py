@@ -187,32 +187,35 @@ def fetch_feed_html(
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless)
-        page = browser.new_page(locale="ko-KR")
-        page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-        page.wait_for_selector("article", timeout=timeout_ms)
+        # 페이지 로딩 중 오류/중단이 나도 브라우저 프로세스가 남지 않도록 항상 닫는다
+        try:
+            page = browser.new_page(locale="ko-KR")
+            page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            page.wait_for_selector("article", timeout=timeout_ms)
 
-        for i in range(max_clicks):
-            last_time = page.locator("article time").last.inner_text()
-            if not is_recent(last_time, max_hours):
-                break
-            button = page.locator("button", has_text="더보기")
-            if button.count() == 0:
-                break
-            before = page.locator("article").count()
-            button.first.scroll_into_view_if_needed()
-            button.first.click()
-            try:
-                page.wait_for_function(
-                    "n => document.querySelectorAll('article').length > n",
-                    arg=before,
-                    timeout=timeout_ms,
-                )
-            except PwTimeout:
-                print(f"[info] 더 불러올 게시글 없음 ({i + 1}번째 클릭)", file=sys.stderr)
-                break
+            for i in range(max_clicks):
+                last_time = page.locator("article time").last.inner_text()
+                if not is_recent(last_time, max_hours):
+                    break
+                button = page.locator("button", has_text="더보기")
+                if button.count() == 0:
+                    break
+                before = page.locator("article").count()
+                button.first.scroll_into_view_if_needed()
+                button.first.click()
+                try:
+                    page.wait_for_function(
+                        "n => document.querySelectorAll('article').length > n",
+                        arg=before,
+                        timeout=timeout_ms,
+                    )
+                except PwTimeout:
+                    print(f"[info] 더 불러올 게시글 없음 ({i + 1}번째 클릭)", file=sys.stderr)
+                    break
 
-        html = page.content()
-        browser.close()
+            html = page.content()
+        finally:
+            browser.close()
     return html
 
 
