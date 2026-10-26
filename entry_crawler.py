@@ -33,22 +33,11 @@ MAX_AGE_HOURS = 20
 
 # 가게 slug(/shops/<slug>) -> storeNo. 새 가게는 116~120 중 남는 번호로 추가한다.
 STORE_NO = {
-    "alice": 100,          # 앨리스
-    "quality": 101,        # 퀄리티
-    "kelly": 102,          # 켈리
-    "disney": 103,         # 디즈니
-    "2_4": 104,            # 2.4
-    "cheongdamdong": 105,  # 청담동
-    "lady": 106,           # 레이디
-    "another": 107,        # 어나더
-    "basic": 108,          # 베이직
+    "blending": 103,       # 블렌딩
+    "another": 106,        # 어나더
+    "timing": 107,         # 타이밍
     "impact": 109,         # 임팩트
     "picasso": 110,        # 피카소
-    "onepick": 111,        # 원픽
-    "blending": 112,       # 블렌딩
-    "speed": 113,          # 스피드
-    "timing": 114,         # 타이밍
-    "partyone": 115,       # 파티원
 }
 
 COUNT_RE = re.compile(r"(\d+)\s*명")
