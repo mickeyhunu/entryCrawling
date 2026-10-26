@@ -50,6 +50,27 @@ python entry_crawler.py --max-hours 24         # 기준 시간 변경
 python entry_crawler.py --html saved.html      # 저장해 둔 HTML 파일 파싱
 ```
 
+## DB 저장 (MySQL)
+
+`--db`를 붙이면 결과를 `ENTRY_TODAY`, `ENTRY_ALLDAY` 테이블에 한 트랜잭션으로 저장합니다.
+
+```sql
+INSERT INTO ENTRY_TODAY (storeNo, workerName) VALUES (?, ?)
+ON DUPLICATE KEY UPDATE insertCount = insertCount + 1;
+
+INSERT INTO ENTRY_ALLDAY (storeNo, workerName, lastAttendanceAt) VALUES (?, ?, CURRENT_TIMESTAMP)
+ON DUPLICATE KEY UPDATE lastAttendanceAt = CURRENT_TIMESTAMP;
+```
+
+1. `.env.example`을 `.env`로 복사하고 `CHATBOT_MYSQL_USER`, `CHATBOT_MYSQL_PASSWORD`를 채웁니다.
+   `.env`는 `.gitignore`에 들어 있어 커밋되지 않습니다.
+2. 실행합니다.
+
+```bash
+python entry_crawler.py --db                    # 크롤링 후 DB 저장
+python entry_crawler.py --db -o entries.json    # DB 저장 + 파일로도 저장
+```
+
 ## 테스트
 
 ```bash

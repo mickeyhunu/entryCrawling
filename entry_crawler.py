@@ -12,6 +12,7 @@ HTML 을 확보한 뒤 BeautifulSoup 으로 <article> 카드를 파싱한다.
     python entry_crawler.py -o entries.json
     python entry_crawler.py --format csv -o entries.csv
     python entry_crawler.py --html saved.html     # 저장된 HTML 파일 파싱 (오프라인)
+    python entry_crawler.py --db                  # 크롤링 결과를 MySQL 에 저장
 """
 
 from __future__ import annotations
@@ -215,6 +216,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--format", choices=["json", "csv"], default="json")
     ap.add_argument("-o", "--output", help="출력 파일 (기본: stdout)")
     ap.add_argument("--headful", action="store_true", help="브라우저 창을 띄워서 실행")
+    ap.add_argument("--db", action="store_true",
+                    help="ENTRY_TODAY / ENTRY_ALLDAY 테이블에 저장 (.env 의 CHATBOT_MYSQL_* 사용)")
     args = ap.parse_args(argv)
 
     if args.html:
@@ -224,6 +227,12 @@ def main(argv: list[str] | None = None) -> int:
         html = fetch_feed_html(args.url, max_hours=args.max_hours, headless=not args.headful)
 
     rows = todays_entries(parse_feed_html(html), args.max_hours)
+
+    if args.db:
+        from entry_db import save_entries
+
+        saved = save_entries(rows)
+        print(f"[db] {saved}행 저장 완료", file=sys.stderr)
 
     writer = write_csv if args.format == "csv" else write_json
     if args.output:
