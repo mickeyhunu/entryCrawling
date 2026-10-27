@@ -50,6 +50,8 @@ DATE_RE = re.compile(r"(\d{1,2})\s*월\s*(\d{1,2})\s*일")
 PAREN_RE = re.compile(r"[()]")
 # 이름에 붙는 영문(N민지, n사랑)과 숫자(조은2, 세나5)
 NAME_NOISE_RE = re.compile(r"[A-Za-z0-9]")
+# 이름은 두 글자. 셋째 글자부터는 한글로 적은 번호(지연투, 재희삼)로 보고 자른다
+NAME_MAX_LEN = 2
 # 이름 줄에 허용되는 문자: 한글, 영문, 숫자, 공백, 괄호, 점
 NAME_LINE_RE = re.compile(r"^[가-힣A-Za-z0-9\s().]+$")
 AGE_RE = re.compile(r"(\d+)\s*(초|분|시간|일|주|개월|달|년)\s*전")
@@ -95,8 +97,8 @@ def is_recent(time_text: str, max_hours: float = MAX_AGE_HOURS) -> bool:
 
 
 def normalize_name(token: str) -> str:
-    """'N민지' -> '민지', 'n나라2' -> '나라', '조은2' -> '조은'."""
-    return NAME_NOISE_RE.sub("", token)
+    """'N민지' -> '민지', 'n나라2' -> '나라', '조은2' -> '조은', '지연투' -> '지연'."""
+    return NAME_NOISE_RE.sub("", token)[:NAME_MAX_LEN]
 
 
 def parse_members(content: str) -> list[str]:

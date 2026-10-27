@@ -68,7 +68,8 @@ class ParseMembersTest(unittest.TestCase):
 
     def test_strips_letters_and_digits(self):
         for raw, name in [("N민지", "민지"), ("n사랑", "사랑"), ("n나라2", "나라"),
-                          ("조은2", "조은"), ("예주6", "예주"), ("N1", "")]:
+                          ("조은2", "조은"), ("예주6", "예주"), ("N1", ""),
+                          ("지연투", "지연"), ("아영투", "아영"), ("재희삼", "재희")]:
             self.assertEqual(normalize_name(raw), name)
 
     def test_beginning_digits(self):
@@ -88,6 +89,15 @@ class ParseMembersTest(unittest.TestCase):
     def test_disney(self):
         members = parse_members("디즈니 25명\n세라 하니 이수 N진리\nn서원 (이유2 세진 세아)")
         self.assertEqual(members, ["세라", "하니", "이수", "진리", "서원", "이유", "세진", "세아"])
+
+    def test_korean_number_suffix(self):
+        members = parse_members("지인 지젤 하란 로하8\n수지8 혜준8 차연 이서투\n"
+                                "동희 민영 시은 아영투\n윤슬 재희삼 하연 하나\n"
+                                "지영 서은 서희투 지연투\n소윤투 시은투 가린 규리\n미우 설하 재희")
+        self.assertEqual(members, ["지인", "지젤", "하란", "로하", "수지", "혜준", "차연", "이서",
+                                   "동희", "민영", "시은", "아영", "윤슬", "재희", "하연", "하나",
+                                   "지영", "서은", "서희", "지연", "소윤", "가린", "규리",
+                                   "미우", "설하"])
 
     def test_one_char_name_kept_inside_line(self):
         self.assertEqual(parse_members("사라 솔 그림 유비"), ["사라", "솔", "그림", "유비"])
