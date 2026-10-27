@@ -43,7 +43,7 @@ class RunOnceTest(unittest.TestCase):
     def test_saves_recent_posts_oldest_first_once(self):
         state = {}
         # 20시간 이내 엔트리 글: 앨리스(18h), 퀄리티(14h), 앨리스(14h). 신규가게는 storeNo 없음
-        self.assertEqual(self.run_feed(HTML, state), 2 + 11 + 24)
+        self.assertEqual(self.run_feed(HTML, state), 2 + 12 + 25)
         self.assertEqual([rows[0]["storeNo"] for rows in self.saved], [100, 101, 100])
         self.assertEqual(len(state), 3)
 
@@ -55,7 +55,7 @@ class RunOnceTest(unittest.TestCase):
         state = {}
         self.run_feed(HTML, state)
         self.saved.clear()
-        self.assertEqual(self.run_feed(NEW_POST, state), 26)
+        self.assertEqual(self.run_feed(NEW_POST, state), 27)
         self.assertEqual(self.saved[0][:2], [{"storeNo": 100, "workerName": "새로"},
                                               {"storeNo": 100, "workerName": "이름"}])
 

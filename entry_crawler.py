@@ -31,18 +31,25 @@ FEED_URL = "https://gangnambside.com/feed"
 ENTRY_TAG = "엔트리"
 MAX_AGE_HOURS = 20
 
-# 가게 slug(/shops/<slug>) -> storeNo. 새 가게는 116~120 중 남는 번호로 추가한다.
+# 가게 이름(피드의 @가게명) -> storeNo
 STORE_NO = {
-    "blending": 103,       # 블렌딩
-    "another": 106,        # 어나더
-    "timing": 107,         # 타이밍
-    "impact": 109,         # 임팩트
-    "picasso": 110,        # 피카소
+    "공공칠": 101,
+    "구구단": 102,
+    "블렌딩": 103,
+    "세이렌": 104,
+    "인트로": 105,
+    "어나더": 106,
+    "타이밍": 107,
+    "도깨비": 108,
+    "임팩트": 109,
+    "피카소": 110,
 }
 
 COUNT_RE = re.compile(r"(\d+)\s*명")
 DATE_RE = re.compile(r"(\d{1,2})\s*월\s*(\d{1,2})\s*일")
-PAREN_RE = re.compile(r"\([^)]*\)")
+PAREN_RE = re.compile(r"[()]")
+# 이름에 붙는 영문(N민지, n사랑)과 숫자(조은2, 세나5)
+NAME_NOISE_RE = re.compile(r"[A-Za-z0-9]")
 # 이름 줄에 허용되는 문자: 한글, 영문, 숫자, 공백, 괄호, 점
 NAME_LINE_RE = re.compile(r"^[가-힣A-Za-z0-9\s().]+$")
 AGE_RE = re.compile(r"(\d+)\s*(초|분|시간|일|주|개월|달|년)\s*전")
@@ -87,11 +94,16 @@ def is_recent(time_text: str, max_hours: float = MAX_AGE_HOURS) -> bool:
     return age is not None and age < max_hours
 
 
+def normalize_name(token: str) -> str:
+    """'N민지' -> '민지', 'n나라2' -> '나라', '조은2' -> '조은'."""
+    return NAME_NOISE_RE.sub("", token)
+
+
 def parse_members(content: str) -> list[str]:
     """게시글 본문에서 출근 명단을 추출한다.
 
-    헤더/요약 줄(가게명·인원수, 날짜, '총 N명', 이모지 제목)과 괄호 안 이름은
-    본문에 적힌 인원수에 포함되지 않으므로 제외한다.
+    헤더/요약 줄(가게명·인원수, 날짜, '총 N명', 이모지 제목)은 건너뛰고,
+    괄호 안 이름도 명단에 포함한다. 이름의 영문/숫자를 떼어낸 뒤 같은 이름은 한 번만 넣는다.
     """
     members: list[str] = []
     for raw_line in content.splitlines():
@@ -100,8 +112,11 @@ def parse_members(content: str) -> list[str]:
             continue
         if COUNT_RE.search(line) or DATE_RE.search(line) or not NAME_LINE_RE.match(line):
             continue
-        # 한 글자 토큰(예: "묶")은 이름이 아닌 표기로 보고 제외
-        members.extend(tok for tok in PAREN_RE.sub(" ", line).split() if len(tok) >= 2)
+        names = [n for n in map(normalize_name, PAREN_RE.sub(" ", line).split()) if n]
+        # 한 글자만 있는 줄(예: "묶")은 이름이 아닌 표기로 보고 제외
+        if len(names) == 1 and len(names[0]) == 1:
+            continue
+        members.extend(n for n in names if n not in members)
     return members
 
 
@@ -152,7 +167,7 @@ def todays_entries(
 
 def rows_for_post(post: EntryPost) -> list[dict] | None:
     """게시글 하나의 명단을 {storeNo, workerName} 행으로 만든다. storeNo 미지정 가게는 None."""
-    store_no = STORE_NO.get(post.shop_slug)
+    store_no = STORE_NO.get(post.shop_name)
     if store_no is None:
         print(
             f"[warn] storeNo 미지정 가게 건너뜀: {post.shop_name} ({post.shop_slug})"
