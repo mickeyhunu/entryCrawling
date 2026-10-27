@@ -124,7 +124,7 @@ def install_stop_handlers() -> threading.Event:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="새 엔트리 글을 감시해서 DB 에 저장")
     ap.add_argument("--url", default=FEED_URL, help="피드 URL (기본: %(default)s)")
-    ap.add_argument("--interval", type=int, default=60, help="확인 주기(초) (기본: %(default)s)")
+    ap.add_argument("--interval", type=int, default=600, help="확인 주기(초) (기본: %(default)s)")
     ap.add_argument("--max-hours", type=float, default=MAX_AGE_HOURS,
                     help="이 시간 이내 글만 대상 (기본: %(default)s)")
     ap.add_argument("--once", action="store_true", help="한 번만 확인하고 종료")
